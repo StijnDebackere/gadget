@@ -8,7 +8,7 @@ setuptools.setup(
     description="A package to read in different gadget simulations.",
     # long_description=long_description,
     # long_description_content_type="text/markdown",
-    url="",
+    url="https://github.com/StijnDebackere/gadget",
     py_modules=['gadget'],
     install_requires=[
         "h5py",
