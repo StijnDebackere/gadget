@@ -157,20 +157,34 @@ class Gadget(object):
         elif sim == 'BAHAMAS':
             dirpath = model_dir.rstrip('/') + '/Data/'
             if file_type == 'snap':
-                dirname = 'snapshot_%.3i/' % snapnum
+                dirname = 'Snapshots/snapshot_%.3i/' % snapnum
                 fname = 'snap_%.3i.' % snapnum
-            elif file_type == 'snip':
-                dirname = 'snipshot_%.3i/' % snapnum
-                fname = 'snip_%.3i.' % snapnum
             elif file_type == 'particles':
-                dirname = 'particledata_%.3i/' % snapnum
+                dirname = 'EagleSubGroups_5r200/particledata_%.3i/' % snapnum
                 fname = 'eagle_subfind_particles_%.3i.' % snapnum
             else:
-                dirname = 'groups_%.3i/' % snapnum
+                dirname = 'EagleSubGroups_5r200/groups_%.3i/' % snapnum
                 if file_type == 'group':
                     fname = 'group_tab_%.3i.'%snapnum
                 elif file_type == 'subh':
                     fname = 'eagle_subfind_tab_%.3i.'%snapnum
+        # elif sim == 'BAHAMAS':
+        #     dirpath = model_dir.rstrip('/') + '/data/'
+        #     if file_type == 'snap':
+        #         dirname = 'snapshot_%.3i/' % snapnum
+        #         fname = 'snap_%.3i.' % snapnum
+        #     elif file_type == 'snip':
+        #         dirname = 'snipshot_%.3i/' % snapnum
+        #         fname = 'snip_%.3i.' % snapnum
+        #     elif file_type == 'particles':
+        #         dirname = 'particledata_%.3i/' % snapnum
+        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
+        #     else:
+        #         dirname = 'groups_%.3i/' % snapnum
+        #         if file_type == 'group':
+        #             fname = 'group_tab_%.3i.'%snapnum
+        #         elif file_type == 'subh':
+        #             fname = 'eagle_subfind_tab_%.3i.'%snapnum
 
         # load actual file
         filename = dirpath + dirname + fname
