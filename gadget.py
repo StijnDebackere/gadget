@@ -140,8 +140,8 @@ class Gadget(object):
         of particles in file.
 
         """
-        dirpath = model_dir.rstrip('/') + '/data/'
         if sim == 'OWLS':
+            dirpath = model_dir.rstrip('/') + '/data/'
             if file_type == 'snap':
                 dirname = 'snapshot_%.3i/' % snapnum
                 fname = 'snap_%.3i.' % snapnum
@@ -155,6 +155,7 @@ class Gadget(object):
                 fname = 'subhalo_%.3i.' % snapnum
 
         elif sim == 'BAHAMAS':
+            dirpath = model_dir.rstrip('/') + '/Data/'
             if file_type == 'snap':
                 dirname = 'snapshot_%.3i/' % snapnum
                 fname = 'snap_%.3i.' % snapnum
