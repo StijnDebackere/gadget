@@ -13,6 +13,7 @@ setuptools.setup(
     install_requires=[
         "h5py",
         "numpy",
+        "tqdm",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

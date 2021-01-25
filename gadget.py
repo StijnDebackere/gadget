@@ -2,6 +2,7 @@ import pprint
 
 import h5py
 import numpy as np
+from tqdm import tqdm
 
 # import logging
 
@@ -462,27 +463,23 @@ class Gadget(object):
         # Ndata contains dimension of data
         read = True
         withdata = -1
-        j = 0
         Ndata = 0
-        while read:
+        for j in tqdm(
+                range(0, self.num_files),
+                desc='Reading {var} in files'):
             f = h5py.File(f'{self.filename}{j}.hdf5', 'r')
             Ndata = self.get_ndata(f=f, var=var)
             if Ndata == 0:
-                if verbose: print(f'Npart in file {j} is {Ndata} continuing...')
                 f.close()
-                j += 1
-                if j >= self.num_files :
-                    print('No particles found in any file!')
-                    return
             else:
                 if withdata < 0: withdata = j
-                if verbose: print(f'Npart in file {j} is {Ndata} continuing...')
                 # read data
                 self.append_result(f, var, j,  verbose)
                 f.close()
-                j += 1
-                if j >= self.num_files:
-                    read = False
+
+        if withdata < 0:
+            print('No particles found in any file!')
+            return
 
         # convert to CGS units
         if not gadgetunits:
