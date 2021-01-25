@@ -398,7 +398,7 @@ class Gadget(object):
         return Ndata
 
     def read_single_file(
-            self, i, var, gadgetunits=False, verbose=True, reshape=False):
+            self, i, var, gadgetunits=False, verbose=True, reshape=True):
         """Read in a single file i"""
         if i >= self.num_files:
             raise ValueError(f'{i} should be smaller than {self.num_files}')
