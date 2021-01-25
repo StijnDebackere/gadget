@@ -234,9 +234,11 @@ class Gadget(object):
         except:
             self.a = f['Header'].attrs['Time']
 
-        self.masses = f['Header'].attrs['MassTable']
         self.h = f['Header'].attrs['HubbleParam']
         self.boxsize = f['Header'].attrs['BoxSize'] # [h^-1 Mpc]
+
+        self.mass_unit = f['Units'].attrs['UnitMass_in_g'] / self.h
+        self.masses = f['Header'].attrs['MassTable']
 
         # Read conversion units
         self.pi           = f['Constants'].attrs['PI']
