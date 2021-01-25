@@ -344,62 +344,17 @@ class Gadget(object):
 
         return attrs.reshape(len(ids), -1)
 
-    def read_var(
-            self,
-            var,
-            gadgetunits=False,
-            verbose=False,
-            dtype=float):
-        '''
-
-        '''
-        if self.sim == 'OWLS':
-            self.data = self.read_owls_array(
-                var,
-                gadgetunits=gadgetunits,
-                verbose=verbose)
-        elif self.sim == 'BAHAMAS':
-            self.data = self.read_bahamas_array(
-                var,
-                gadgetunits=gadgetunits,
-                verbose=verbose)
-
     def read_var(self, var, gadgetunits=False, verbose=False, dtype=float):
         """Read in var for all files."""
+        data = self.read_all_files(
+            var=var, gadgetunits=gadgetunits, verbose=verbose)
         if verbose: print('Finished reading snapshot')
-        return self.data.astype(dtype)
+        return data.astype(dtype)
 
-    def read_owls_array(
-            self,
-            var,
-            gadgetunits=False,
-            verbose=True):
-        '''
-        Reading routine that does not use hash table
-        '''
-        # open file
-        try:
-            f = h5py.File(self.filename + '0.hdf5', 'r')
-        except:
-            f = h5py.File(self.filename + 'hdf5', 'r')
-
-        #Set up array depending on what we're reading in
+    def get_ndata(self, f, var):
+        """Get the number of data points of var in f."""
         string = var.rsplit('/')
-
-        self.data = np.empty([0])
-
-        #read data from first file
-        if verbose: print('Reading variable ', var)
-
-        # loop over files to find the first one with data in it
-        # j tracks file number
-        # Ndata contains dimension of data
-        read = True
-        withdata = -1
-        j = 0
-        Ndata = 0
-        while read:
-            f = h5py.File(self.filename + str(j) + ".hdf5", 'r')
+        if self.sim == 'OWLS':
             if self.file_type == 'snap':
                 num_part_file = f['Header'].attrs['NumPart_ThisFile']
                 # parttype is always first part of var
@@ -421,72 +376,7 @@ class Gadget(object):
                     else:
                         Ndata = f['SUBFIND'].attrs['Number_of_subgroups']
 
-            if Ndata == 0:
-                if verbose: print('Npart in file %i is %i continuing...'%(j, Ndata))
-                f.close()
-                j += 1
-                if j >= self.num_files :
-                    print('No particles found in any file!')
-                    return self.data
-            else:
-                if withdata < 0: withdata = j
-                if verbose: print('Npart in file %i is %i continuing...'%(j, Ndata))
-                # read data
-                self.append_result(f, var, j,  verbose)
-                f.close()
-                j += 1
-                if j >= self.num_files:
-                    read = False
-
-        # convert to CGS units
-        if not gadgetunits:
-            conversion = self.convert_cgs(var, j-1, verbose=verbose)
-            self.data = self.data * conversion
-            if verbose: print('Returning data in CGS units')
-
-        if verbose: print('Finished reading data')
-
-        # still need to reshape output
-        if string[-1] in n3:
-            self.data = self.data.reshape(-1,3)
-        elif string[-1] in n6:
-            self.data = self.data.reshape(-1,6)
-        elif string[-1] in n9:
-            self.data = self.data.reshape(-1,9)
-
-        return self.data
-
-    # --------------------------------------------------------------------------
-    def read_bahamas_array(
-            self,
-            var,
-            gadgetunits=False,
-            verbose=True):
-        '''
-        BAHAMAS is partway between eagle and owls, can use EagleSnapshot
-        '''
-        # open file
-        try:
-            f = h5py.File(self.filename + '0.hdf5', 'r')
-        except:
-            f = h5py.File(self.filename + 'hdf5', 'r')
-
-        # Set up array depending on what we're reading in
-        string = var.rsplit('/')
-        self.data = np.empty([0])
-
-        # read data from first file
-        if verbose: print('Reading variable ', var)
-
-        # loop over files to find the first one with data in it
-        # j tracks file number
-        # Ndata contains dimension of data
-        read = True
-        withdata = -1
-        j = 0
-        Ndata = 0
-        while read:
-            f = h5py.File(self.filename + str(j) + ".hdf5", 'r')
+        elif self.sim == 'BAHAMAS':
             if self.file_type == 'snap' or self.file_type == 'particles':
                 num_part_file = f['Header'].attrs['NumPart_ThisFile']
                 # parttype is always first part of var
@@ -503,16 +393,90 @@ class Gadget(object):
                     Ndata = f['Subhalo'].attrs['Ngroups']
                 elif 'ParticleID' in var:
                     Ndata = f['IDs'].attrs['Nids']
+
+        return Ndata
+
+    def read_single_file(
+            self, i, var, gadgetunits=False, verbose=True, reshape=False):
+        """Read in a single file i"""
+        if i >= self.num_files:
+            raise ValueError(f'{i} should be smaller than {self.num_files}')
+
+        try:
+            f = h5py.File(f'{self.filename}{i}.hdf5', 'r')
+        except OSError:
+            raise FileNotFoundError(f'file {self.filename}{i}.hdf5 does not exist')
+
+        string = var.rsplit('/')
+
+        Ndata = self.get_ndata(f=f, var=var)
+        if Ndata == 0:
+            if verbose: print(f'Npart in file {i} is {Ndata}...')
+            return
+
+        else:
+            data = f[var][:].flatten()
+            f.close()
+
+            # convert to CGS units
+            if not gadgetunits:
+                conversion = self.convert_cgs(var, i, verbose=verbose)
+                data *= conversion
+                if verbose: print('Returning data in CGS units')
+
+            if reshape:
+                # still need to reshape output
+                if string[-1] in n3:
+                    return data.reshape(-1,3)
+                elif string[-1] in n6:
+                    return data.reshape(-1,6)
+                elif string[-1] in n9:
+                    return data.reshape(-1,9)
+                return data
+
+            return data
+
+
+    def append_result(self, f, var, j, verbose):
+        """Append var data from file j to self.data."""
+        try:
+            self.data = np.append(self.data, f[var][:].flatten(), axis=0)
+            return
+        except KeyError:
+            print(f'KeyError: Variable {var} not found in file {j}')
+            print('Returning value of False')
+            return False
+
+    def read_all_files(self, var, gadgetunits=False, verbose=True):
+        """Reading routine that does not use hash table."""
+        #Set up array depending on what we're reading in
+        string = var.rsplit('/')
+
+        self.data = np.empty([0])
+
+        #read data from first file
+        if verbose: print('Reading variable ', var)
+
+        # loop over files to find the first one with data in it
+        # j tracks file number
+        # Ndata contains dimension of data
+        read = True
+        withdata = -1
+        j = 0
+        Ndata = 0
+        while read:
+            f = h5py.File(f'{self.filename}{j}.hdf5', 'r')
+            Ndata = self.get_ndata(f=f, var=var)
             if Ndata == 0:
-                if verbose: print('Npart in file %i is %i continuing...'%(j, Ndata))
+                if verbose: print(f'Npart in file {j} is {Ndata} continuing...')
                 f.close()
                 j += 1
                 if j >= self.num_files :
                     print('No particles found in any file!')
-                    return self.data
+                    return
             else:
                 if withdata < 0: withdata = j
-                if verbose: print('Npart in file %i is %i continuing...' % (j, Ndata))
+                if verbose: print(f'Npart in file {j} is {Ndata} continuing...')
                 # read data
                 self.append_result(f, var, j,  verbose)
                 f.close()
@@ -537,17 +501,3 @@ class Gadget(object):
             self.data = self.data.reshape(-1,9)
 
         return self.data
-
-    # --------------------------------------------------------------------------
-    def append_result(self, f, var, j, verbose):
-        '''
-        Append var data from file j to self.data
-        '''
-        try:
-            self.data = np.append(self.data, f[var][:].flatten(), axis=0)
-            return
-        except KeyError:
-            print('KeyError: Variable ' + var + ' not found in file ', j)
-            print('Returning value of False')
-            return False
-# ==============================================================================
