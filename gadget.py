@@ -59,7 +59,7 @@ n6 = ['MassType',
 n9 = ['InertiaTensor']
 
 class Gadget(object):
-    '''
+    """
     An object containing all relevant information for a gadget hdf5 file
 
     Parameters
@@ -113,12 +113,10 @@ class Gadget(object):
     Attrs:
     []
     ============================================================    
-    '''
+    """
     def __init__(self, model_dir, file_type, snapnum, sim='BAHAMAS',
                  smooth=False, verbose=False, gadgetunits=False, **kwargs):
-        '''
-        Initializes some parameters
-        '''
+        """Initializes some parameters."""
         self.model_dir = model_dir
         if (file_type not in file_type_options or
             (sim == "BAHAMAS" and file_type == "fof")):
@@ -136,12 +134,11 @@ class Gadget(object):
         self.verbose = verbose
         self.gadgetunits = gadgetunits
 
-    # ==========================================================================
     def get_full_dir(self, model_dir, file_type, snapnum, sim):
-        '''
-        Get filename, including full path and load extra info about number of
-        particles in file
-        '''
+        """Get filename, including full path and load extra info about number
+        of particles in file.
+
+        """
         dirpath = model_dir.rstrip('/') + '/data/'
         if sim == 'OWLS':
             if file_type == 'snap':
@@ -223,12 +220,11 @@ class Gadget(object):
 
         return filename
 
-    # --------------------------------------------------------------------------
     def read_file_attributes(self, f):
-        '''
-        Read in different physical parameters from file, should be simulation
-        independent
-        '''
+        """Read in different physical parameters from file, should be
+        simulation independent.
+
+        """
         # Read info
         z = f['Header'].attrs['Redshift']
         self.z = round(z, 2)
@@ -281,11 +277,8 @@ class Gadget(object):
         except:
             pass
 
-    # --------------------------------------------------------------------------
     def list_items(self, var="/", j=0):
-        '''
-        List var items and attributes
-        '''
+        """List var items and attributes."""
         f = h5py.File(self.filename + str(j) + '.hdf5', 'r')
         try:
             items = list(f[var].items())
@@ -300,11 +293,8 @@ class Gadget(object):
         pprint.pprint(attrs)
         print('============================================================')
 
-    # --------------------------------------------------------------------------
     def convert_cgs(self, var, j, verbose=True):
-        '''
-        Return conversion factor for var
-        '''
+        """Return conversion factor for var."""
         f = h5py.File(self.filename + str(j) + '.hdf5', 'r')
         # read in conversion factors
         string = var.rsplit('/')
@@ -338,11 +328,8 @@ class Gadget(object):
 
         return conversion
 
-    # --------------------------------------------------------------------------
     def read_attr(self, path, ids=None, dtype=float):
-        '''
-        Function to readily read out group attributes
-        '''
+        """Function to readily read out group attributes."""
         if ids is None:
             ids = range(self.num_files)
 
@@ -357,7 +344,6 @@ class Gadget(object):
 
         return attrs.reshape(len(ids), -1)
 
-    # --------------------------------------------------------------------------
     def read_var(
             self,
             var,
@@ -378,10 +364,11 @@ class Gadget(object):
                 gadgetunits=gadgetunits,
                 verbose=verbose)
 
+    def read_var(self, var, gadgetunits=False, verbose=False, dtype=float):
+        """Read in var for all files."""
         if verbose: print('Finished reading snapshot')
         return self.data.astype(dtype)
 
-    # --------------------------------------------------------------------------
     def read_owls_array(
             self,
             var,
