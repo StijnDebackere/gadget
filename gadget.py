@@ -466,7 +466,7 @@ class Gadget(object):
         Ndata = 0
         for j in tqdm(
                 range(0, self.num_files),
-                desc='Reading {var} in files'):
+                desc=f'Reading {var} in files'):
             f = h5py.File(f'{self.filename}{j}.hdf5', 'r')
             Ndata = self.get_ndata(f=f, var=var)
             if Ndata == 0:
