@@ -259,7 +259,7 @@ class Gadget(object):
         self.pi           = f['Constants'].attrs['PI']
         self.gamma        = f['Constants'].attrs['GAMMA']
         self.gravity      = f['Constants'].attrs['GRAVITY']
-        self.solar_mass   = f['Constants'].attrs['SOLAR_MASS'] # [g]
+        self.solar_mass   = f['Constants'].attrs['SOLAR_MASS'] # [g] -> no 1/h
         self.solar_lum    = f['Constants'].attrs['SOLAR_LUM'] # [erg/s]
         self.rad_const    = f['Constants'].attrs['RAD_CONST'] # [g]
         self.avogadro     = f['Constants'].attrs['AVOGADRO']
@@ -270,8 +270,8 @@ class Gadget(object):
         self.cm_per_mpc   = f['Constants'].attrs['CM_PER_MPC']
         self.protonmass   = f['Constants'].attrs['PROTONMASS'] # [g]
         self.electronmass = f['Constants'].attrs['ELECTRONMASS'] # [g]
-        self.hubble       = f['Constants'].attrs['HUBBLE'] # [g]
-        self.T_cmb        = f['Constants'].attrs['T_CMB0'] # [g]
+        self.hubble       = f['Constants'].attrs['HUBBLE'] # [h s^-1]
+        self.T_cmb        = f['Constants'].attrs['T_CMB0'] # [K]
         self.sec_per_Myr  = f['Constants'].attrs['SEC_PER_MEGAYEAR']
         self.sec_per_year = f['Constants'].attrs['SEC_PER_YEAR']
         self.stefan       = f['Constants'].attrs['STEFAN']
@@ -282,9 +282,11 @@ class Gadget(object):
         try:
             self.rho_unit = f['Units'].attrs['UnitDensity_in_cgs']
             self.omega_b = f['Header'].attrs['OmegaBaryon']
+            self.omega_m = f['Header'].attrs['Omega0']
         except: # if no baryons in file
             self.rho_unit = 0
             self.omega_b = 0
+            self.omega_m = f['Header'].attrs['Omega0']
 
         try:
             self.bh_seed = f['RuntimePars'].attrs['SeedBlackHoleMass_Msun']
