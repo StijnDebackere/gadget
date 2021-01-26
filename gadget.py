@@ -252,26 +252,28 @@ class Gadget(object):
         self.h = f['Header'].attrs['HubbleParam']
         self.boxsize = f['Header'].attrs['BoxSize'] # [h^-1 Mpc]
 
-        self.mass_unit = f['Units'].attrs['UnitMass_in_g'] / self.h
-        self.masses = f['Header'].attrs['MassTable']
+        # the unit mass is given without h=1 units!
+        # masses * mass_unit = Omega_m * rho_crit * V / N ~ h^-1
+        self.mass_unit = f['Units'].attrs['UnitMass_in_g']  # [g]
+        self.masses = f['Header'].attrs['MassTable']        # [h^-1]
 
         # Read conversion units
         self.pi           = f['Constants'].attrs['PI']
         self.gamma        = f['Constants'].attrs['GAMMA']
         self.gravity      = f['Constants'].attrs['GRAVITY']
-        self.solar_mass   = f['Constants'].attrs['SOLAR_MASS'] # [g] -> no 1/h
-        self.solar_lum    = f['Constants'].attrs['SOLAR_LUM'] # [erg/s]
-        self.rad_const    = f['Constants'].attrs['RAD_CONST'] # [g]
+        self.solar_mass   = f['Constants'].attrs['SOLAR_MASS']   # [g] -> no 1/h
+        self.solar_lum    = f['Constants'].attrs['SOLAR_LUM']    # [erg/s]
+        self.rad_const    = f['Constants'].attrs['RAD_CONST']    # [g]
         self.avogadro     = f['Constants'].attrs['AVOGADRO']
-        self.boltzmann    = f['Constants'].attrs['BOLTZMANN']   # [erg/K]
+        self.boltzmann    = f['Constants'].attrs['BOLTZMANN']    # [erg/K]
         self.gas_const    = f['Constants'].attrs['GAS_CONST']
         self.c            = f['Constants'].attrs['C']
         self.planck       = f['Constants'].attrs['PLANCK']
         self.cm_per_mpc   = f['Constants'].attrs['CM_PER_MPC']
-        self.protonmass   = f['Constants'].attrs['PROTONMASS'] # [g]
+        self.protonmass   = f['Constants'].attrs['PROTONMASS']   # [g]
         self.electronmass = f['Constants'].attrs['ELECTRONMASS'] # [g]
-        self.hubble       = f['Constants'].attrs['HUBBLE'] # [h s^-1]
-        self.T_cmb        = f['Constants'].attrs['T_CMB0'] # [K]
+        self.hubble       = f['Constants'].attrs['HUBBLE']       # [h s^-1]
+        self.T_cmb        = f['Constants'].attrs['T_CMB0']       # [K]
         self.sec_per_Myr  = f['Constants'].attrs['SEC_PER_MEGAYEAR']
         self.sec_per_year = f['Constants'].attrs['SEC_PER_YEAR']
         self.stefan       = f['Constants'].attrs['STEFAN']
