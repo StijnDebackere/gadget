@@ -115,8 +115,9 @@ class Gadget(object):
     []
     ============================================================    
     """
-    def __init__(self, model_dir, file_type, snapnum, sim='BAHAMAS',
-                 smooth=False, verbose=False, gadgetunits=False, **kwargs):
+    def __init__(
+            self, model_dir, file_type, snapnum, sim='BAHAMAS',
+            smooth=False, verbose=False, gadgetunits=False, **kwargs):
         """Initializes some parameters."""
         self.model_dir = model_dir
         if (file_type not in file_type_options or
@@ -366,8 +367,12 @@ class Gadget(object):
 
         return attrs.reshape(len(ids), -1)
 
-    def read_var(self, var, gadgetunits=False, verbose=False, dtype=float):
+    def read_var(
+            self, var, gadgetunits=None, verbose=False, dtype=float):
         """Read in var for all files."""
+        if gadgetunits is None:
+            gadgetunits = self.gadgetunits
+
         data = self.read_all_files(
             var=var, gadgetunits=gadgetunits, verbose=verbose)
         if verbose: print('Finished reading snapshot')
@@ -419,8 +424,11 @@ class Gadget(object):
         return Ndata
 
     def read_single_file(
-            self, i, var, gadgetunits=False, verbose=True, reshape=True):
+            self, i, var, gadgetunits=None, verbose=True, reshape=True):
         """Read in a single file i"""
+        if gadgetunits is None:
+            gadgetunits = self.gadgetunits
+
         if i >= self.num_files:
             raise ValueError(f'{i} should be smaller than {self.num_files}')
 
@@ -469,9 +477,12 @@ class Gadget(object):
             print('Returning value of False')
             return False
 
-    def read_all_files(self, var, gadgetunits=False, verbose=True):
+    def read_all_files(self, var, gadgetunits=None, verbose=True):
         """Reading routine that does not use hash table."""
         #Set up array depending on what we're reading in
+        if gadgetunits is None:
+            gadgetunits = self.gadgetunits
+
         string = var.rsplit('/')
 
         self.data = np.empty([0])
