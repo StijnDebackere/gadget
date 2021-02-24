@@ -351,21 +351,49 @@ class Gadget(object):
 
         return conversion
 
-    def read_attr(self, path, ids=None, dtype=float):
+    def read_attr(self, path, ids=0, dtype=float):
         """Function to readily read out group attributes."""
         if ids is None:
             ids = range(self.num_files)
+            shape = (len(ids), -1)
+        else:
+            ids = np.atleast_1d(ids)
+            shape = ids.shape + (-1,)
 
         string = path.split('/')
         group = '/'.join(string[:-1])
         attr = string[-1]
 
         attrs = np.empty((0, ), dtype=dtype)
-        for idx in ids:
+        for idx in tqdm(ids, desc=f'Reading {attr} in files'):
             with h5py.File(f'{self.filename}{idx}.hdf5', 'r') as h5f:
                 attrs = np.append(attrs, h5f[group].attrs[attr])
 
-        return attrs.reshape(len(ids), -1)
+        return attrs.reshape(shape)
+
+    def read_attrs(self, dset, ids=0, dtype=float):
+        """Function to readily read out all dset attributes."""
+        if ids is None:
+            ids = range(self.num_files)
+            shape = (len(ids), -1)
+        else:
+            ids = np.atleast_1d(ids)
+            shape = (-1,)
+
+        attrs = {}
+        for idx in tqdm(ids, desc=f'Reading attrs in files'):
+            with h5py.File(f'{self.filename}{idx}.hdf5', 'r') as h5f:
+                for attr, val in h5f[dset].attrs.items():
+                    if attr not in attrs.keys():
+                        attrs[attr] = [val]
+                    else:
+                        attrs[attr].append(val)
+
+        attrs = {
+            k: np.asarray(v).reshape(shape) for k, v in attrs.items()
+        }
+
+        return attrs
 
     def read_var(
             self, var, gadgetunits=None, verbose=False, dtype=float):
