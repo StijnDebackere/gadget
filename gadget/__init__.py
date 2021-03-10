@@ -1,17 +1,19 @@
 import pprint
 
+import astropy.units as u
 import h5py
 import numpy as np
 from tqdm import tqdm
 
 # import logging
+from gadget.units import *
 
-import pdb
 
 file_type_options = ['snap', 'subh', 'fof', 'particles']
 
 sims = ['OWLS',
-        'BAHAMAS']
+        'BAHAMAS',
+        'BAHAMAS_NEW']
 
 metals = ['Carbon',
           'Helium',
@@ -59,6 +61,7 @@ n6 = ['MassType',
 
 n9 = ['InertiaTensor']
 
+
 class Gadget(object):
     """
     An object containing all relevant information for a gadget hdf5 file
@@ -84,7 +87,7 @@ class Gadget(object):
     verbose : bool (default=False)
         print messages
 
-    gadgetunits : bool (default=False)
+    units : bool (default=False)
         keeps quantities in Gadget code units
 
     Examples
@@ -117,7 +120,8 @@ class Gadget(object):
     """
     def __init__(
             self, model_dir, file_type, snapnum, sim='BAHAMAS',
-            smooth=False, verbose=False, gadgetunits=False, **kwargs):
+            smooth=False, verbose=False, units=True, comoving=False,
+            **kwargs):
         """Initializes some parameters."""
         self.model_dir = model_dir
         if (file_type not in file_type_options or
@@ -134,7 +138,8 @@ class Gadget(object):
         self.snapnum = snapnum
         self.smooth = smooth
         self.verbose = verbose
-        self.gadgetunits = gadgetunits
+        self.units = units
+        self.comoving = comoving
 
     def get_full_dir(self, model_dir, file_type, snapnum, sim):
         """Get filename, including full path and load extra info about number
@@ -156,36 +161,39 @@ class Gadget(object):
                 fname = 'subhalo_%.3i.' % snapnum
 
         elif sim == 'BAHAMAS':
+            dirpath = model_dir.rstrip('/') + '/data/'
+            if file_type == 'snap':
+                dirname = 'snapshot_%.3i/' % snapnum
+                fname = 'snap_%.3i.' % snapnum
+
+            elif file_type == 'particles':
+                dirname = 'particledata_%.3i/' % snapnum
+                fname = 'eagle_subfind_particles_%.3i.' % snapnum
+
+            elif file_type == 'fof':
+                dirname = 'groups_%.3i/' % snapnum
+                fname = 'group_tab_%.3i.' % snapnum
+
+            elif file_type == 'subh':
+                dirname = 'groups_%.3i/' % snapnum
+                fname = 'eagle_subfind_tab_%.3i.' % snapnum
+
+        elif sim == 'BAHAMAS_NEW':
             dirpath = model_dir.rstrip('/') + '/Data/'
             if file_type == 'snap':
                 dirname = 'Snapshots/snapshot_%.3i/' % snapnum
                 fname = 'snap_%.3i.' % snapnum
+
             elif file_type == 'particles':
                 dirname = 'EagleSubGroups_5r200/particledata_%.3i/' % snapnum
                 fname = 'eagle_subfind_particles_%.3i.' % snapnum
+
             else:
                 dirname = 'EagleSubGroups_5r200/groups_%.3i/' % snapnum
                 if file_type == 'group':
                     fname = 'group_tab_%.3i.'%snapnum
                 elif file_type == 'subh':
                     fname = 'eagle_subfind_tab_%.3i.'%snapnum
-        # elif sim == 'BAHAMAS':
-        #     dirpath = model_dir.rstrip('/') + '/data/'
-        #     if file_type == 'snap':
-        #         dirname = 'snapshot_%.3i/' % snapnum
-        #         fname = 'snap_%.3i.' % snapnum
-        #     elif file_type == 'snip':
-        #         dirname = 'snipshot_%.3i/' % snapnum
-        #         fname = 'snip_%.3i.' % snapnum
-        #     elif file_type == 'particles':
-        #         dirname = 'particledata_%.3i/' % snapnum
-        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
-        #     else:
-        #         dirname = 'groups_%.3i/' % snapnum
-        #         if file_type == 'group':
-        #             fname = 'group_tab_%.3i.'%snapnum
-        #         elif file_type == 'subh':
-        #             fname = 'eagle_subfind_tab_%.3i.'%snapnum
 
         # load actual file
         filename = dirpath + dirname + fname
@@ -196,7 +204,7 @@ class Gadget(object):
             except :
                 f = h5py.File(filename + 'hdf5', 'r')
         except:
-            pdb.set_trace()
+            breakpoint()
             raise IOError('file %s does not exist/cannot be opened'%filename)
 
         if sim == 'OWLS':
@@ -215,7 +223,7 @@ class Gadget(object):
                 self.num_sub_groups_tot  = f['SUBFIND'].attrs['Total_Number_of_subgroups']
                 self.num_sub_groups_file = f['SUBFIND'].attrs['Number_of_subgroups']
 
-        elif sim == 'BAHAMAS':
+        elif sim == 'BAHAMAS' or sim == 'BAHAMAS_NEW':
             # Read in file and particle info
             self.num_files     = f['Header'].attrs['NumFilesPerSnapshot']
             self.num_part_tot  = f['Header'].attrs['NumPart_Total']
@@ -251,39 +259,39 @@ class Gadget(object):
             self.a = f['Header'].attrs['Time']
 
         self.h = f['Header'].attrs['HubbleParam']
-        self.boxsize = f['Header'].attrs['BoxSize'] # [h^-1 Mpc]
+        self.boxsize = f['Header'].attrs['BoxSize'] * R_UNIT # [h^-1 Mpc]
 
         # the unit mass is given without h=1 units!
         # masses * mass_unit = Omega_m * rho_crit * V / N ~ h^-1
-        self.mass_unit = f['Units'].attrs['UnitMass_in_g']  # [g]
-        self.masses = f['Header'].attrs['MassTable']        # [h^-1]
+        self.mass_unit = f['Units'].attrs['UnitMass_in_g'] * u.g
+        self.masses = f['Header'].attrs['MassTable'] * M_UNIT       # [h^-1]
 
         # Read conversion units
         self.pi           = f['Constants'].attrs['PI']
         self.gamma        = f['Constants'].attrs['GAMMA']
         self.gravity      = f['Constants'].attrs['GRAVITY']
-        self.solar_mass   = f['Constants'].attrs['SOLAR_MASS']   # [g] -> no 1/h
-        self.solar_lum    = f['Constants'].attrs['SOLAR_LUM']    # [erg/s]
-        self.rad_const    = f['Constants'].attrs['RAD_CONST']    # [g]
+        self.solar_mass   = f['Constants'].attrs['SOLAR_MASS'] * u.g
+        self.solar_lum    = f['Constants'].attrs['SOLAR_LUM'] * u.erg / u.s
+        self.rad_const    = f['Constants'].attrs['RAD_CONST'] * u.erg / (u.cm**3 * u.K**4)
         self.avogadro     = f['Constants'].attrs['AVOGADRO']
-        self.boltzmann    = f['Constants'].attrs['BOLTZMANN']    # [erg/K]
-        self.gas_const    = f['Constants'].attrs['GAS_CONST']
-        self.c            = f['Constants'].attrs['C']
-        self.planck       = f['Constants'].attrs['PLANCK']
+        self.boltzmann    = f['Constants'].attrs['BOLTZMANN'] * u.erg / u.K
+        self.gas_const    = f['Constants'].attrs['GAS_CONST'] * u.erg / (u.mol * u.K)
+        self.c            = f['Constants'].attrs['C'] * u.cm / u.s
+        self.planck       = f['Constants'].attrs['PLANCK'] * u.erg * u.s
         self.cm_per_mpc   = f['Constants'].attrs['CM_PER_MPC']
-        self.protonmass   = f['Constants'].attrs['PROTONMASS']   # [g]
-        self.electronmass = f['Constants'].attrs['ELECTRONMASS'] # [g]
-        self.hubble       = f['Constants'].attrs['HUBBLE']       # [h s^-1]
-        self.T_cmb        = f['Constants'].attrs['T_CMB0']       # [K]
+        self.protonmass   = f['Constants'].attrs['PROTONMASS'] * u.g
+        self.electronmass = f['Constants'].attrs['ELECTRONMASS'] * u.g
+        self.hubble       = f['Constants'].attrs['HUBBLE'] * u.s**(-1) * u.littleh
+        self.T_cmb        = f['Constants'].attrs['T_CMB0'] * u.K
         self.sec_per_Myr  = f['Constants'].attrs['SEC_PER_MEGAYEAR']
         self.sec_per_year = f['Constants'].attrs['SEC_PER_YEAR']
-        self.stefan       = f['Constants'].attrs['STEFAN']
-        self.thompson     = f['Constants'].attrs['THOMPSON']
+        self.stefan       = f['Constants'].attrs['STEFAN']  * u.erg / (u.cm**3 * u.K**4)
+        self.thompson     = f['Constants'].attrs['THOMPSON'] * u.cm**2
         self.ev_to_erg    = f['Constants'].attrs['EV_TO_ERG']
         self.z_solar      = f['Constants'].attrs['Z_Solar']
 
         try:
-            self.rho_unit = f['Units'].attrs['UnitDensity_in_cgs']
+            self.rho_unit_cgs = f['Units'].attrs['UnitDensity_in_cgs'] * u.g / u.cm**3
             self.omega_b = f['Header'].attrs['OmegaBaryon']
             self.omega_m = f['Header'].attrs['Omega0']
         except: # if no baryons in file
@@ -292,7 +300,7 @@ class Gadget(object):
             self.omega_m = f['Header'].attrs['Omega0']
 
         try:
-            self.bh_seed = f['RuntimePars'].attrs['SeedBlackHoleMass_Msun']
+            self.bh_seed = f['RuntimePars'].attrs['SeedBlackHoleMass_Msun'] * M_UNIT
             chem = f['Parameters/ChemicalElements'].ref
             self.solarabundance        = f[chem].attrs['SolarAbundance']
             self.solarabundance_oxygen = f[chem].attrs['SolarAbundance_Oxygen']
@@ -316,40 +324,72 @@ class Gadget(object):
         pprint.pprint(attrs)
         print('============================================================')
 
-    def convert_cgs(self, var, j, verbose=True):
+
+    def get_units(self, var, j, verbose=True):
         """Return conversion factor for var."""
         f = h5py.File(self.filename + str(j) + '.hdf5', 'r')
         # read in conversion factors
         string = var.rsplit('/')
-
+        dset = string[-1]
         try:
             if not 'ElementAbundance' in string[-1]:
                 self.a_scaling = f[var].attrs['aexp-scale-exponent']
                 self.h_scaling = f[var].attrs['h-scale-exponent']
-                self.CGSconversion = f[var].attrs['CGSConversionFactor']
+                self.units = UNITS[dset]
             else:
                 metal = f[var+'/'+metals[0]].ref
                 self.a_scaling = f[metal].attrs['aexp-scale-exponent']
                 self.h_scaling = f[metal].attrs['h-scale-exponent']
-                self.CGSconversion = f[metal].attrs['CGSConversionFactor']
+                self.units = UNITS[dset]
 
         except:
             print('Warning: no conversion factors found in file 0 for %s!'%var)
             self.a_scaling = 0
             self.h_scaling = 0
-            self.CGSconversion = 1
+            self.units = DIMENSIONLESS
 
-        f.close()
-        conversion = (self.a**self.a_scaling * self.h**self.h_scaling *
-                      self.CGSconversion)
+        if self.comoving:
+            self.a_scaling = 0.
 
-        if verbose:
-            print('Converting to physical quantities in CGS units: ')
-            print('a-exp-scale-exponent = ', self.a_scaling)
-            print('h-scale-exponent     = ', self.h_scaling)
-            print('CGSConversionFactor  = ', self.CGSconversion)
+        units = (self.a**self.a_scaling * u.littleh**self.h_scaling *
+                      self.units)
+        return units
 
-        return conversion
+    # def convert_cgs(self, var, j, verbose=True):
+    #     """Return conversion factor for var."""
+    #     f = h5py.File(self.filename + str(j) + '.hdf5', 'r')
+    #     # read in conversion factors
+    #     string = var.rsplit('/')
+    #     units = self.get_units(var=var, j=j, verbose=verbose)
+
+    #     try:
+    #         if not 'ElementAbundance' in string[-1]:
+    #             self.a_scaling = f[var].attrs['aexp-scale-exponent']
+    #             self.h_scaling = f[var].attrs['h-scale-exponent']
+    #             self.CGSconversion = f[var].attrs['CGSConversionFactor']
+    #         else:
+    #             metal = f[var+'/'+metals[0]].ref
+    #             self.a_scaling = f[metal].attrs['aexp-scale-exponent']
+    #             self.h_scaling = f[metal].attrs['h-scale-exponent']
+    #             self.CGSconversion = f[metal].attrs['CGSConversionFactor']
+
+    #     except:
+    #         print('Warning: no conversion factors found in file 0 for %s!'%var)
+    #         self.a_scaling = 0
+    #         self.h_scaling = 0
+    #         self.CGSconversion = 1
+
+    #     f.close()
+    #     conversion = (self.a**self.a_scaling * self.h**self.h_scaling *
+    #                   self.CGSconversion)
+
+    #     if verbose:
+    #         print('Converting to physical quantities in CGS units: ')
+    #         print('a-exp-scale-exponent = ', self.a_scaling)
+    #         print('h-scale-exponent     = ', self.h_scaling)
+    #         print('CGSConversionFactor  = ', self.CGSconversion)
+
+    #     return conversion
 
     def read_attr(self, path, ids=0, dtype=float):
         """Function to readily read out group attributes."""
@@ -396,13 +436,13 @@ class Gadget(object):
         return attrs
 
     def read_var(
-            self, var, gadgetunits=None, verbose=False, dtype=float):
+            self, var, units=None, verbose=False, dtype=float):
         """Read in var for all files."""
-        if gadgetunits is None:
-            gadgetunits = self.gadgetunits
+        if units is None:
+            units = self.units
 
         data = self.read_all_files(
-            var=var, gadgetunits=gadgetunits, verbose=verbose)
+            var=var, units=units, verbose=verbose)
         if verbose: print('Finished reading snapshot')
         return data.astype(dtype)
 
@@ -431,7 +471,7 @@ class Gadget(object):
                     else:
                         Ndata = f['SUBFIND'].attrs['Number_of_subgroups']
 
-        elif self.sim == 'BAHAMAS':
+        elif self.sim == 'BAHAMAS' or self.sim == 'BAHAMAS_NEW':
             if self.file_type == 'snap' or self.file_type == 'particles':
                 num_part_file = f['Header'].attrs['NumPart_ThisFile']
                 # parttype is always first part of var
@@ -452,10 +492,10 @@ class Gadget(object):
         return Ndata
 
     def read_single_file(
-            self, i, var, gadgetunits=None, verbose=True, reshape=True):
+            self, i, var, units=None, verbose=True, reshape=True):
         """Read in a single file i"""
-        if gadgetunits is None:
-            gadgetunits = self.gadgetunits
+        if units is None:
+            units = self.units
 
         if i >= self.num_files:
             raise ValueError(f'{i} should be smaller than {self.num_files}')
@@ -476,11 +516,11 @@ class Gadget(object):
             data = f[var][:].flatten()
             f.close()
 
-            # convert to CGS units
-            if not gadgetunits:
-                conversion = self.convert_cgs(var, i, verbose=verbose)
-                data *= conversion
-                if verbose: print('Returning data in CGS units')
+            # add units
+            if units:
+                units = self.get_units(var, i, verbose=verbose)
+                data = data * units
+                if verbose: print('Returning data with astropy.units.Unit attached')
 
             if reshape:
                 # still need to reshape output
@@ -505,11 +545,11 @@ class Gadget(object):
             print('Returning value of False')
             return False
 
-    def read_all_files(self, var, gadgetunits=None, verbose=True):
+    def read_all_files(self, var, units=None, verbose=True):
         """Reading routine that does not use hash table."""
         #Set up array depending on what we're reading in
-        if gadgetunits is None:
-            gadgetunits = self.gadgetunits
+        if units is None:
+            units = self.units
 
         string = var.rsplit('/')
 
@@ -541,11 +581,15 @@ class Gadget(object):
             print('No particles found in any file!')
             return
 
-        # convert to CGS units
-        if not gadgetunits:
-            conversion = self.convert_cgs(var, j-1, verbose=verbose)
-            self.data = self.data * conversion
-            if verbose: print('Returning data in CGS units')
+        # add units
+        if units:
+            units = self.get_units(var, j-1, verbose=verbose)
+            self.data = self.data * units
+            if verbose: print('Returning data with astropy.units.Unit attached')
+        # if not units:
+        #     conversion = self.convert_cgs(var, j-1, verbose=verbose)
+        #     self.data = self.data * conversion
+        #     if verbose: print('Returning data in CGS units')
 
         if verbose: print('Finished reading data')
 
