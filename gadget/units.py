@@ -7,8 +7,8 @@ R_UNIT = u.Mpc
 V_UNIT = u.km / u.s
 T_UNIT = u.K
 RHO_UNIT = M_UNIT / R_UNIT ** 3
-DIMENSIONLESS = 1
-UNKOWN = None
+DIMENSIONLESS = u.dimensionless_unscaled
+UNKOWN = u.dimensionless_unscaled
 
 UNITS = {
     'Coordinates': R_UNIT,

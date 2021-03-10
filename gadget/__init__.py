@@ -1,4 +1,7 @@
+from pathlib import Path
+import pathlib
 import pprint
+from typing import Union, Any, Optional, List
 
 import astropy.units as u
 import h5py
@@ -10,10 +13,6 @@ from gadget.units import *
 
 
 file_type_options = ['snap', 'subh', 'fof', 'particles']
-
-sims = ['OWLS',
-        'BAHAMAS',
-        'BAHAMAS_NEW']
 
 metals = ['Carbon',
           'Helium',
@@ -119,121 +118,240 @@ class Gadget(object):
     ============================================================    
     """
     def __init__(
-            self, model_dir, file_type, snapnum, sim='BAHAMAS',
-            smooth=False, verbose=False, units=True, comoving=False,
-            **kwargs):
+            self,
+            model_dir: Union[str, Path],
+            file_type: str,
+            snapnum: int,
+            smooth: bool=False,
+            verbose: bool=False,
+            units: bool=True,
+            comoving: bool=False) -> None:
         """Initializes some parameters."""
-        self.model_dir = model_dir
-        if (file_type not in file_type_options or
-            (sim == "BAHAMAS" and file_type == "fof")):
-            raise ValueError('file_type %s not in options %s'%(file_type,
-                                                               file_type_options))
-        else:
-            self.file_type = file_type
-        if sim not in sims:
-            raise ValueError('sim %s not in options %s'%(sim, sims))
-        else:
-            self.sim = sim
-        self.filename = self.get_full_dir(model_dir, file_type, snapnum, sim)
+        self.model_dir = Path(model_dir)
+        if not self.model_dir.exists:
+            raise ValueError(f'{model_dir} does not exist')
+        self.file_type = file_type
         self.snapnum = snapnum
+        self.filename = self.get_full_dir(
+            self.model_dir, self.file_type, self.snapnum
+        )
         self.smooth = smooth
         self.verbose = verbose
         self.units = units
         self.comoving = comoving
 
-    def get_full_dir(self, model_dir, file_type, snapnum, sim):
+    def get_full_dir(
+            self, model_dir: Path, file_type: str, snapnum: int) -> Path:
         """Get filename, including full path and load extra info about number
         of particles in file.
-
         """
-        if sim == 'OWLS':
-            dirpath = model_dir.rstrip('/') + '/data/'
-            if file_type == 'snap':
-                dirname = 'snapshot_%.3i/' % snapnum
-                fname = 'snap_%.3i.' % snapnum
+        ext_options = ['.0.hdf5', '.hdf5']
+        # find data directory
+        data_dir_options = [
+            model_dir / 'data', model_dir / 'Data'
+        ]
+        data_dir = None
+        for dr in data_dir_options:
+            if dr.exists():
+                data_dir = dr
+                break
 
-            elif file_type == 'fof':
-                dirname = 'groups_%.3i/' % snapnum
-                fname = 'group%.3i.' % snapnum
+        if data_dir is None:
+            raise ValueError(f'Could not find valid data directory in {model_dir}')
 
-            elif file_type == 'subh':
-                dirname = 'subhalos_%.3i/' % snapnum
-                fname = 'subhalo_%.3i.' % snapnum
+        # find snapshot file
+        if file_type == 'snap':
+            snap_dir_options = [
+                data_dir / f'snapshot_{snapnum:03}',
+                data_dir / f'Snapshots/snapshot_{snapnum:03}',
+            ]
+            snap_dir = None
+            for dr in snap_dir_options:
+                if dr.exists():
+                    snap_dir = dr
+                    break
 
-        elif sim == 'BAHAMAS':
-            dirpath = model_dir.rstrip('/') + '/data/'
-            if file_type == 'snap':
-                dirname = 'snapshot_%.3i/' % snapnum
-                fname = 'snap_%.3i.' % snapnum
+            if snap_dir is None:
+                raise ValueError(f'Could not find valid snapshot directory in {data_dir}')
 
-            elif file_type == 'particles':
-                dirname = 'particledata_%.3i/' % snapnum
-                fname = 'eagle_subfind_particles_%.3i.' % snapnum
+            snap_fname_options = [
+                f'snap_{snapnum:03d}',
+            ]
+            filename = None
+            for fn in snap_fname_options:
+                for ext in ext_options:
+                    if (snap_dir / fn).with_suffix(ext).exists():
+                        filename = (snap_dir / fn)
+                        break
 
-            elif file_type == 'fof':
-                dirname = 'groups_%.3i/' % snapnum
-                fname = 'group_tab_%.3i.' % snapnum
+            if filename is None:
+                raise ValueError(f'Could not find valid snapshot file in {snap_dir}')
 
-            elif file_type == 'subh':
-                dirname = 'groups_%.3i/' % snapnum
-                fname = 'eagle_subfind_tab_%.3i.' % snapnum
+        # find FOF file
+        if file_type == 'fof':
+            fof_dir_options = [
+                data_dir / f'groups_{snapnum:03}',
+                data_dir / f'EagleSubGroups_5r200/groups_{snapnum:03}',
+            ]
+            fof_dir = None
+            for dr in fof_dir_options:
+                if dr.exists():
+                    fof_dir = dr
+                    break
 
-        elif sim == 'BAHAMAS_NEW':
-            dirpath = model_dir.rstrip('/') + '/Data/'
-            if file_type == 'snap':
-                dirname = 'Snapshots/snapshot_%.3i/' % snapnum
-                fname = 'snap_%.3i.' % snapnum
+            if fof_dir is None:
+                raise ValueError(f'Could not find valid fof directory in {data_dir}')
 
-            elif file_type == 'particles':
-                dirname = 'EagleSubGroups_5r200/particledata_%.3i/' % snapnum
-                fname = 'eagle_subfind_particles_%.3i.' % snapnum
+            fof_fname_options = [
+                f'group{snapnum:03d}',
+                f'group_tab_{snapnum:03d}',
+            ]
+            filename = None
+            for fn in fof_fname_options:
+                for ext in ext_options:
+                    if (fof_dir / fn).with_suffix(ext).exists():
+                        filename = (fof_dir / fn)
+                        break
 
-            else:
-                dirname = 'EagleSubGroups_5r200/groups_%.3i/' % snapnum
-                if file_type == 'group':
-                    fname = 'group_tab_%.3i.'%snapnum
-                elif file_type == 'subh':
-                    fname = 'eagle_subfind_tab_%.3i.'%snapnum
+            if filename is None:
+                raise ValueError(f'Could not find valid FOF file in {fof_dir}')
+
+        # find subhalo file
+        if file_type == 'subh':
+            subh_dir_options = [
+                data_dir / f'subhalos_{snapnum:03}',
+                data_dir / f'groups_{snapnum:03}',
+                data_dir / f'EagleSubGroups_5r200/groups_{snapnum:03}',
+            ]
+            fname_base = f'subh_{snapnum:03d}.'
+            subh_dir = None
+            for dr in subh_dir_options:
+                if dr.exists():
+                    subh_dir = dr
+                    break
+
+            if subh_dir is None:
+                raise ValueError(f'Could not find valid subhalo directory in {data_dir}')
+
+            subh_fname_options = [
+                f'subhalo_{snapnum:03d}',
+                f'eagle_subfind_tab_{snapnum:03d}',
+            ]
+            filename = None
+            for fn in subh_fname_options:
+                for ext in ext_options:
+                    if (subh_dir / fn).with_suffix(ext).exists():
+                        filename = (subh_dir / fn)
+                        break
+
+            if filename is None:
+                raise ValueError(f'Could not find valid subhalo file in {subh_dir}')
+
+        # find particles file
+        if file_type == 'particles':
+            part_dir_options = [
+                data_dir / f'particledata_{snapnum:03}',
+                data_dir / f'EagleSubGroups_5r200/particledata_{snapnum:03}',
+            ]
+            fname_base = f'part_{snapnum:03d}.'
+            part_dir = None
+            for dr in part_dir_options:
+                if dr.exists():
+                    part_dir = dr
+                    break
+
+            if part_dir is None:
+                raise ValueError(f'Could not find valid particledata directory in {data_dir}')
+
+            part_fname_options = [
+                f'eagle_subfind_particles_{snapnum:03d}',
+            ]
+            filename = None
+            for fn in part_fname_options:
+                for ext in ext_options:
+                    if (part_dir / fn).with_suffix(ext).exists():
+                        filename = (part_dir / fn)
+                        break
+
+            if filename is None:
+                raise ValueError(f'Could not find valid particles file in {part_dir}')
+
+        # if sim_type == 'OWLS':
+        #     if file_type == 'snap':
+        #         dirname = 'snapshot_%.3i/' % snapnum
+        #         fname = 'snap_%.3i.' % snapnum
+
+        #     elif file_type == 'fof':
+        #         dirname = 'groups_%.3i/' % snapnum
+        #         fname = 'group%.3i.' % snapnum
+
+        #     elif file_type == 'subh':
+        #         dirname = 'subhalos_%.3i/' % snapnum
+        #         fname = 'subhalo_%.3i.' % snapnum
+
+        # elif sim_type == 'BAHAMAS':
+        #     dirpath = model_dir.rstrip('/') + '/data/'
+        #     if file_type == 'snap':
+        #         dirname = 'snapshot_%.3i/' % snapnum
+        #         fname = 'snap_%.3i.' % snapnum
+
+        #     elif file_type == 'particles':
+        #         dirname = 'particledata_%.3i/' % snapnum
+        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
+
+        #     elif file_type == 'fof':
+        #         dirname = 'groups_%.3i/' % snapnum
+        #         fname = 'group_tab_%.3i.' % snapnum
+
+        #     elif file_type == 'subh':
+        #         dirname = 'groups_%.3i/' % snapnum
+        #         fname = 'eagle_subfind_tab_%.3i.' % snapnum
+
+        # elif sim_type == 'BAHAMAS_NEW':
+        #     dirpath = model_dir.rstrip('/') + '/Data/'
+        #     if file_type == 'snap':
+        #         dirname = 'Snapshots/snapshot_%.3i/' % snapnum
+        #         fname = 'snap_%.3i.' % snapnum
+
+        #     elif file_type == 'particles':
+        #         dirname = 'EagleSubGroups_5r200/particledata_%.3i/' % snapnum
+        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
+
+        #     else:
+        #         dirname = 'EagleSubGroups_5r200/groups_%.3i/' % snapnum
+        #         if file_type == 'group':
+        #             fname = 'group_tab_%.3i.'%snapnum
+        #         elif file_type == 'subh':
+        #             fname = 'eagle_subfind_tab_%.3i.'%snapnum
 
         # load actual file
-        filename = dirpath + dirname + fname
         try:
-            try:
-                # open first file
-                f = h5py.File(filename + '0.hdf5', 'r')
-            except :
-                f = h5py.File(filename + 'hdf5', 'r')
+            f = h5py.File(filename.with_suffix(ext), 'r')
         except:
             breakpoint()
-            raise IOError('file %s does not exist/cannot be opened'%filename)
+            raise IOError(f'file {filename} does not exist/cannot be opened')
 
-        if sim == 'OWLS':
-            # Read in file and particle info
-            self.num_files     = f['Header'].attrs['NumFilesPerSnapshot']
-            self.num_part_tot  = f['Header'].attrs['NumPart_Total']
-            self.num_part_file = f['Header'].attrs['NumPart_ThisFile']
-            if file_type == 'fof':
-                self.num_files = f['FOF'].attrs['NTask']
+        self.num_files     = f['Header'].attrs['NumFilesPerSnapshot']
+        self.num_part_tot  = f['Header'].attrs['NumPart_Total']
+        self.num_part_file = f['Header'].attrs['NumPart_ThisFile']
+
+        if file_type == 'fof':
+            self.num_files = f['FOF'].attrs['NTask']
+            try:
                 self.num_groups_tot  = f['FOF'].attrs['Total_Number_of_groups']
                 self.num_groups_file = f['FOF'].attrs['Number_of_groups']
-            elif file_type == 'subh':
-                self.num_files = f['FOF'].attrs['NTask']
+            except KeyError:
+                self.num_groups_tot  = f['FOF'].attrs['TotNgroups']
+                self.num_groups_file = f['FOF'].attrs['Ngroups']
+
+        elif file_type == 'subh':
+            self.num_files = f['FOF'].attrs['NTask']
+            try:
                 self.num_groups_tot  = f['SUBFIND'].attrs['Total_Number_of_groups']
                 self.num_groups_file = f['SUBFIND'].attrs['Number_of_groups']
                 self.num_sub_groups_tot  = f['SUBFIND'].attrs['Total_Number_of_subgroups']
                 self.num_sub_groups_file = f['SUBFIND'].attrs['Number_of_subgroups']
-
-        elif sim == 'BAHAMAS' or sim == 'BAHAMAS_NEW':
-            # Read in file and particle info
-            self.num_files     = f['Header'].attrs['NumFilesPerSnapshot']
-            self.num_part_tot  = f['Header'].attrs['NumPart_Total']
-            self.num_part_file = f['Header'].attrs['NumPart_ThisFile']
-            if file_type == 'fof':
-                self.num_files = f['FOF'].attrs['NTask']
-                self.num_groups_tot  = f['FOF'].attrs['TotNgroups']
-                self.num_groups_file = f['FOF'].attrs['Ngroups']
-            elif file_type == 'subh':
-                self.num_files = f['FOF'].attrs['NTask']
+            except KeyError:
                 self.num_groups_tot  = f['FOF'].attrs['TotNgroups']
                 self.num_groups_file = f['FOF'].attrs['Ngroups']
                 self.num_sub_groups_tot  = f['Subhalo'].attrs['TotNgroups']
@@ -245,10 +363,9 @@ class Gadget(object):
 
         return filename
 
-    def read_file_attributes(self, f):
+    def read_file_attributes(self, f: h5py.File) -> None:
         """Read in different physical parameters from file, should be
         simulation independent.
-
         """
         # Read info
         z = f['Header'].attrs['Redshift']
@@ -308,9 +425,9 @@ class Gadget(object):
         except:
             pass
 
-    def list_items(self, var="/", j=0):
+    def list_items(self, var: str="/", j: int=0) -> None:
         """List var items and attributes."""
-        f = h5py.File(self.filename + str(j) + '.hdf5', 'r')
+        f = h5py.File(self.filename.with_suffix(f'.{j}.hdf5'), 'r')
         try:
             items = list(f[var].items())
             print('Items:')
@@ -325,9 +442,9 @@ class Gadget(object):
         print('============================================================')
 
 
-    def get_units(self, var, j, verbose=True):
+    def get_units(self, var: str, j: int, verbose: bool=True) -> u.Quantity:
         """Return conversion factor for var."""
-        f = h5py.File(self.filename + str(j) + '.hdf5', 'r')
+        f = h5py.File(self.filename.with_suffix(f'.{j}.hdf5'), 'r')
         # read in conversion factors
         string = var.rsplit('/')
         dset = string[-1]
@@ -352,46 +469,14 @@ class Gadget(object):
             self.a_scaling = 0.
 
         units = (self.a**self.a_scaling * u.littleh**self.h_scaling *
-                      self.units)
+                 self.units)
         return units
 
-    # def convert_cgs(self, var, j, verbose=True):
-    #     """Return conversion factor for var."""
-    #     f = h5py.File(self.filename + str(j) + '.hdf5', 'r')
-    #     # read in conversion factors
-    #     string = var.rsplit('/')
-    #     units = self.get_units(var=var, j=j, verbose=verbose)
-
-    #     try:
-    #         if not 'ElementAbundance' in string[-1]:
-    #             self.a_scaling = f[var].attrs['aexp-scale-exponent']
-    #             self.h_scaling = f[var].attrs['h-scale-exponent']
-    #             self.CGSconversion = f[var].attrs['CGSConversionFactor']
-    #         else:
-    #             metal = f[var+'/'+metals[0]].ref
-    #             self.a_scaling = f[metal].attrs['aexp-scale-exponent']
-    #             self.h_scaling = f[metal].attrs['h-scale-exponent']
-    #             self.CGSconversion = f[metal].attrs['CGSConversionFactor']
-
-    #     except:
-    #         print('Warning: no conversion factors found in file 0 for %s!'%var)
-    #         self.a_scaling = 0
-    #         self.h_scaling = 0
-    #         self.CGSconversion = 1
-
-    #     f.close()
-    #     conversion = (self.a**self.a_scaling * self.h**self.h_scaling *
-    #                   self.CGSconversion)
-
-    #     if verbose:
-    #         print('Converting to physical quantities in CGS units: ')
-    #         print('a-exp-scale-exponent = ', self.a_scaling)
-    #         print('h-scale-exponent     = ', self.h_scaling)
-    #         print('CGSConversionFactor  = ', self.CGSconversion)
-
-    #     return conversion
-
-    def read_attr(self, path, ids=0, dtype=float):
+    def read_attr(
+            self,
+            path: str,
+            ids: Union[List[int], int]=0,
+            dtype: Union[str, type]=float) -> np.ndarray:
         """Function to readily read out group attributes."""
         if ids is None:
             ids = range(self.num_files)
@@ -405,13 +490,17 @@ class Gadget(object):
         attr = string[-1]
 
         attrs = np.empty((0, ), dtype=dtype)
-        for idx in tqdm(ids, desc=f'Reading {attr} in files'):
-            with h5py.File(f'{self.filename}{idx}.hdf5', 'r') as h5f:
+        for i in tqdm(ids, desc=f'Reading {attr} in files'):
+            with h5py.File(self.filename.with_suffix(f'.{i}.hdf5'), 'r') as h5f:
                 attrs = np.append(attrs, h5f[group].attrs[attr])
 
         return attrs.reshape(shape)
 
-    def read_attrs(self, dset, ids=0, dtype=float):
+    def read_attrs(
+            self,
+            dset: str,
+            ids: Union[List[int], int]=0,
+            dtype: Union[str, type]=float) -> dict:
         """Function to readily read out all dset attributes."""
         if ids is None:
             ids = range(self.num_files)
@@ -421,8 +510,8 @@ class Gadget(object):
             shape = (-1,)
 
         attrs = {}
-        for idx in tqdm(ids, desc=f'Reading attrs in files'):
-            with h5py.File(f'{self.filename}{idx}.hdf5', 'r') as h5f:
+        for i in tqdm(ids, desc=f'Reading attrs in files'):
+            with h5py.File(self.filename.with_suffix(f'.{i}.hdf5'), 'r') as h5f:
                 for attr, val in h5f[dset].attrs.items():
                     if attr not in attrs.keys():
                         attrs[attr] = [val]
@@ -436,7 +525,11 @@ class Gadget(object):
         return attrs
 
     def read_var(
-            self, var, units=None, verbose=False, dtype=float):
+            self,
+            var: str,
+            units: Optional[bool]=None,
+            verbose: Optional[bool]=False,
+            dtype: Union[str, type]=float) -> np.ndarray:
         """Read in var for all files."""
         if units is None:
             units = self.units
@@ -446,53 +539,53 @@ class Gadget(object):
         if verbose: print('Finished reading snapshot')
         return data.astype(dtype)
 
-    def get_ndata(self, f, var):
+    def get_ndata(
+            self,
+            f: h5py.File,
+            var: str) -> int:
         """Get the number of data points of var in f."""
         string = var.rsplit('/')
-        if self.sim == 'OWLS':
-            if self.file_type == 'snap':
-                num_part_file = f['Header'].attrs['NumPart_ThisFile']
-                # parttype is always first part of var
-                if 'PartType' in string[0]:
-                    parttype = np.int(string[0][-1])
-                    Ndata = num_part_file[parttype]
+        if self.file_type == 'snap' or self.file_type == 'particles':
+            num_part_file = f['Header'].attrs['NumPart_ThisFile']
+            if 'PartType' in string[0]:
+                parttype = np.int(string[0][-1])
+                Ndata = num_part_file[parttype]
+            elif 'ParticleID' in var:
+                Ndata = f['Header'].attrs['Nids']
 
-            else:
-                if 'FOF' in var:
-                    if 'PartType' in var:
-                        parttype = string[1][-1]
-                        Ndata = f['FOF'].attrs['Number_per_Type'][parttype]
-                    else:
+        else:
+            if 'FOF' in var:
+                if 'PartType' in var:
+                    parttype = string[1][-1]
+                    Ndata = f['FOF'].attrs['Number_per_Type'][parttype]
+                else:
+                    try:
                         Ndata = f['FOF'].attrs['Number_of_groups']
-                elif 'SUBFIND' in var:
-                    if 'PartType' in var:
-                        parttype = string[1][-1]
-                        Ndata = f['SUBFIND'].attrs['Number_per_Type'][parttype]
-                    else:
-                        Ndata = f['SUBFIND'].attrs['Number_of_subgroups']
+                    except KeyError:
+                        Ndata = f['FOF'].attrs['Ngroups']
 
-        elif self.sim == 'BAHAMAS' or self.sim == 'BAHAMAS_NEW':
-            if self.file_type == 'snap' or self.file_type == 'particles':
-                num_part_file = f['Header'].attrs['NumPart_ThisFile']
-                # parttype is always first part of var
-                if 'PartType' in string[0]:
-                    parttype = np.int(string[0][-1])
-                    Ndata = num_part_file[parttype]
-                elif 'ParticleID' in var:
-                    Ndata = f['Header'].attrs['Nids']
+            elif 'SUBFIND' in var:
+                if 'PartType' in var:
+                    parttype = string[1][-1]
+                    Ndata = f['SUBFIND'].attrs['Number_per_Type'][parttype]
+                else:
+                    Ndata = f['SUBFIND'].attrs['Number_of_subgroups']
 
-            else:
-                if 'FOF' in var:
-                    Ndata = f['FOF'].attrs['Ngroups']
-                elif 'Subhalo' in var:
-                    Ndata = f['Subhalo'].attrs['Ngroups']
-                elif 'ParticleID' in var:
-                    Ndata = f['IDs'].attrs['Nids']
+            elif 'Subhalo' in var:
+                Ndata = f['Subhalo'].attrs['Ngroups']
 
-        return Ndata
+            elif 'ParticleID' in var:
+                Ndata = f['IDs'].attrs['Nids']
+
+        return int(Ndata)
 
     def read_single_file(
-            self, i, var, units=None, verbose=True, reshape=True):
+            self,
+            i: int,
+            var: str,
+            units: Optional[bool]=None,
+            verbose: Optional[bool]=False,
+            reshape: Optional[bool]=True) -> np.ndarray:
         """Read in a single file i"""
         if units is None:
             units = self.units
@@ -500,10 +593,11 @@ class Gadget(object):
         if i >= self.num_files:
             raise ValueError(f'{i} should be smaller than {self.num_files}')
 
+        filename = self.filename.with_suffix(f'.{i}.hdf5')
         try:
-            f = h5py.File(f'{self.filename}{i}.hdf5', 'r')
+            f = h5py.File(filename, 'r')
         except OSError:
-            raise FileNotFoundError(f'file {self.filename}{i}.hdf5 does not exist')
+            raise FileNotFoundError(f'file {filename} does not exist')
 
         string = var.rsplit('/')
 
@@ -534,8 +628,12 @@ class Gadget(object):
 
             return data
 
-
-    def append_result(self, f, var, j, verbose):
+    def append_result(
+            self,
+            f: h5py.File,
+            var: str,
+            j: int,
+            verbose: bool=True) -> Union[None, bool]:
         """Append var data from file j to self.data."""
         try:
             self.data = np.append(self.data, f[var][:].flatten(), axis=0)
@@ -545,7 +643,11 @@ class Gadget(object):
             print('Returning value of False')
             return False
 
-    def read_all_files(self, var, units=None, verbose=True):
+    def read_all_files(
+            self,
+            var: str,
+            units: Optional[bool]=None,
+            verbose: bool=True) -> Union[None, np.ndarray]:
         """Reading routine that does not use hash table."""
         #Set up array depending on what we're reading in
         if units is None:
@@ -567,7 +669,7 @@ class Gadget(object):
         for j in tqdm(
                 range(0, self.num_files),
                 desc=f'Reading {var} in files'):
-            f = h5py.File(f'{self.filename}{j}.hdf5', 'r')
+            f = h5py.File(self.filename.with_suffix(f'.{j}.hdf5'), 'r')
             Ndata = self.get_ndata(f=f, var=var)
             if Ndata == 0:
                 f.close()
@@ -586,10 +688,6 @@ class Gadget(object):
             units = self.get_units(var, j-1, verbose=verbose)
             self.data = self.data * units
             if verbose: print('Returning data with astropy.units.Unit attached')
-        # if not units:
-        #     conversion = self.convert_cgs(var, j-1, verbose=verbose)
-        #     self.data = self.data * conversion
-        #     if verbose: print('Returning data in CGS units')
 
         if verbose: print('Finished reading data')
 
