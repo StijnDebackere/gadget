@@ -11,7 +11,8 @@ import pdb
 file_type_options = ['snap', 'subh', 'fof', 'particles']
 
 sims = ['OWLS',
-        'BAHAMAS']
+        'BAHAMAS',
+        'BAHAMAS_NEW']
 
 metals = ['Carbon',
           'Helium',
@@ -169,23 +170,24 @@ class Gadget(object):
                     fname = 'group_tab_%.3i.'%snapnum
                 elif file_type == 'subh':
                     fname = 'eagle_subfind_tab_%.3i.'%snapnum
-        # elif sim == 'BAHAMAS':
-        #     dirpath = model_dir.rstrip('/') + '/data/'
-        #     if file_type == 'snap':
-        #         dirname = 'snapshot_%.3i/' % snapnum
-        #         fname = 'snap_%.3i.' % snapnum
-        #     elif file_type == 'snip':
-        #         dirname = 'snipshot_%.3i/' % snapnum
-        #         fname = 'snip_%.3i.' % snapnum
-        #     elif file_type == 'particles':
-        #         dirname = 'particledata_%.3i/' % snapnum
-        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
-        #     else:
-        #         dirname = 'groups_%.3i/' % snapnum
-        #         if file_type == 'group':
-        #             fname = 'group_tab_%.3i.'%snapnum
-        #         elif file_type == 'subh':
-        #             fname = 'eagle_subfind_tab_%.3i.'%snapnum
+
+        elif sim == 'BAHAMAS_NEW':
+            dirpath = model_dir.rstrip('/') + '/data/'
+            if file_type == 'snap':
+                dirname = 'snapshot_%.3i/' % snapnum
+                fname = 'snap_%.3i.' % snapnum
+            elif file_type == 'snip':
+                dirname = 'snipshot_%.3i/' % snapnum
+                fname = 'snip_%.3i.' % snapnum
+            elif file_type == 'particles':
+                dirname = 'particledata_%.3i/' % snapnum
+                fname = 'eagle_subfind_particles_%.3i.' % snapnum
+            else:
+                dirname = 'groups_%.3i/' % snapnum
+                if file_type == 'group':
+                    fname = 'group_tab_%.3i.'%snapnum
+                elif file_type == 'subh':
+                    fname = 'eagle_subfind_tab_%.3i.'%snapnum
 
         # load actual file
         filename = dirpath + dirname + fname
@@ -215,7 +217,7 @@ class Gadget(object):
                 self.num_sub_groups_tot  = f['SUBFIND'].attrs['Total_Number_of_subgroups']
                 self.num_sub_groups_file = f['SUBFIND'].attrs['Number_of_subgroups']
 
-        elif sim == 'BAHAMAS':
+        elif sim == 'BAHAMAS' or sim == 'BAHAMAS_NEW':
             # Read in file and particle info
             self.num_files     = f['Header'].attrs['NumFilesPerSnapshot']
             self.num_part_tot  = f['Header'].attrs['NumPart_Total']
@@ -431,7 +433,7 @@ class Gadget(object):
                     else:
                         Ndata = f['SUBFIND'].attrs['Number_of_subgroups']
 
-        elif self.sim == 'BAHAMAS':
+        elif self.sim == 'BAHAMAS' or self.sim == 'BAHAMAS_NEW':
             if self.file_type == 'snap' or self.file_type == 'particles':
                 num_part_file = f['Header'].attrs['NumPart_ThisFile']
                 # parttype is always first part of var
