@@ -2,9 +2,9 @@ import astropy.units as u
 
 
 GAMMA = 5. / 3
-M_UNIT = 1e10 * u.Msun
-R_UNIT = u.Mpc
-V_UNIT = u.km / u.s
+M_UNIT = 1e10 * u.Msun / u.littleh
+R_UNIT = u.Mpc / u.littleh
+V_UNIT = u.km / u.s * 1 / u.littleh
 T_UNIT = u.K
 RHO_UNIT = M_UNIT / R_UNIT ** 3
 DIMENSIONLESS = u.dimensionless_unscaled
