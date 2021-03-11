@@ -476,7 +476,8 @@ class Gadget(object):
             self,
             path: str,
             ids: Union[List[int], int]=0,
-            dtype: Union[str, type]=float) -> np.ndarray:
+            dtype: Union[str, type]=float,
+            verbose: bool=True) -> np.ndarray:
         """Function to readily read out group attributes."""
         if ids is None:
             ids = range(self.num_files)
@@ -490,7 +491,12 @@ class Gadget(object):
         attr = string[-1]
 
         attrs = np.empty((0, ), dtype=dtype)
-        for i in tqdm(ids, desc=f'Reading {attr} in files'):
+        if verbose:
+            iter_ids = tqdm(ids, desc=f'Reading {attr} in files')
+        else:
+            iter_ids = ids
+
+        for i in iter_ids:
             with h5py.File(self.filename.with_suffix(f'.{i}.hdf5'), 'r') as h5f:
                 attrs = np.append(attrs, h5f[group].attrs[attr])
 
@@ -500,7 +506,8 @@ class Gadget(object):
             self,
             dset: str,
             ids: Union[List[int], int]=0,
-            dtype: Union[str, type]=float) -> dict:
+            dtype: Union[str, type]=float,
+            verbose: bool=True) -> dict:
         """Function to readily read out all dset attributes."""
         if ids is None:
             ids = range(self.num_files)
@@ -510,7 +517,12 @@ class Gadget(object):
             shape = (-1,)
 
         attrs = {}
-        for i in tqdm(ids, desc=f'Reading attrs in files'):
+        if verbose:
+            iter_ids = tqdm(ids, desc=f'Reading attrs in files')
+        else:
+            iter_ids = ids
+
+        for i in iter_ids:
             with h5py.File(self.filename.with_suffix(f'.{i}.hdf5'), 'r') as h5f:
                 for attr, val in h5f[dset].attrs.items():
                     if attr not in attrs.keys():
@@ -528,8 +540,8 @@ class Gadget(object):
             self,
             var: str,
             units: Optional[bool]=None,
-            verbose: Optional[bool]=False,
-            dtype: Union[str, type]=float) -> np.ndarray:
+            dtype: Union[str, type]=float,
+            verbose: Optional[bool]=False,) -> np.ndarray:
         """Read in var for all files."""
         if units is None:
             units = self.units
@@ -667,9 +679,16 @@ class Gadget(object):
         withdata = -1
         Ndata = 0
         filename = self.filename
-        for j in tqdm(
+
+        if verbose:
+            iter_num_files = tqdm(
                 range(0, self.num_files),
-                desc=f'Reading {var} in files'):
+                desc=f'Reading {var} in files'
+            )
+        else:
+            iter_num_files = range(0, self.num_files)
+
+        for j in iter_num_files:
             f = h5py.File(f'{filename}.{j}.hdf5', 'r')
             Ndata = self.get_ndata(f=f, var=var)
             if Ndata == 0:
