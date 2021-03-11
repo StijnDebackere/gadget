@@ -77,7 +77,7 @@ UNITS = {
     'IDMostBound': DIMENSIONLESS,
     'InertiaTensor': M_UNIT * R_UNIT**2,
     'InitialMassWeightedBirthZ': DIMENSIONLESS,
-    'InitialMassWeightedStellarAge': UNKOWN,
+    'InitialMassWeightedStellarAge': R_UNIT / V_UNIT,
     'KineticEnergy': V_UNIT**2,
     'Mass': M_UNIT,
     'MassType': M_UNIT,
