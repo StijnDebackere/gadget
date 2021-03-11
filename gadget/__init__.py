@@ -451,25 +451,21 @@ class Gadget(object):
         try:
             if not 'ElementAbundance' in string[-1]:
                 self.a_scaling = f[var].attrs['aexp-scale-exponent']
-                self.h_scaling = f[var].attrs['h-scale-exponent']
                 self.units = UNITS[dset]
             else:
                 metal = f[var+'/'+metals[0]].ref
                 self.a_scaling = f[metal].attrs['aexp-scale-exponent']
-                self.h_scaling = f[metal].attrs['h-scale-exponent']
                 self.units = UNITS[dset]
 
         except:
             print('Warning: no conversion factors found in file 0 for %s!'%var)
             self.a_scaling = 0
-            self.h_scaling = 0
             self.units = DIMENSIONLESS
 
         if self.comoving:
             self.a_scaling = 0.
 
-        units = (self.a**self.a_scaling * u.littleh**self.h_scaling *
-                 self.units)
+        units = (self.a**self.a_scaling * self.units)
         return units
 
     def read_attr(
