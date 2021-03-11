@@ -666,17 +666,18 @@ class Gadget(object):
         read = True
         withdata = -1
         Ndata = 0
+        filename = self.filename
         for j in tqdm(
                 range(0, self.num_files),
                 desc=f'Reading {var} in files'):
-            f = h5py.File(self.filename.with_suffix(f'.{j}.hdf5'), 'r')
+            f = h5py.File(f'{filename}.{j}.hdf5', 'r')
             Ndata = self.get_ndata(f=f, var=var)
             if Ndata == 0:
                 f.close()
             else:
                 if withdata < 0: withdata = j
                 # read data
-                self.append_result(f, var, j,  verbose)
+                self.append_result(f, var, j, verbose)
                 f.close()
 
         if withdata < 0:
