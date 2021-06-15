@@ -414,8 +414,10 @@ class Gadget(object):
         pprint.pprint(attrs)
         print("============================================================")
 
-    def get_units(self, var: str, j: int, verbose: bool = True) -> u.Quantity:
+    def get_units(self, var: str, j: int, verbose: Optional[bool] = None) -> u.Quantity:
         """Return conversion factor for var."""
+        verbose = verbose or self.verbose
+
         f = h5py.File(self.filename.with_suffix(f".{j}.hdf5"), "r")
         # read in conversion factors
         string = var.rsplit("/")
@@ -451,9 +453,11 @@ class Gadget(object):
         path: str,
         ids: Union[List[int], int] = 0,
         dtype: Union[str, type] = float,
-        verbose: bool = True,
+        verbose: Optional[bool] = None,
     ) -> np.ndarray:
         """Function to readily read out group attributes."""
+        verbose = verbose or self.verbose
+
         if ids is None:
             ids = range(self.num_files)
             shape = (len(ids), -1)
@@ -482,9 +486,11 @@ class Gadget(object):
         dset: str,
         ids: Union[List[int], int] = 0,
         dtype: Union[str, type] = float,
-        verbose: bool = True,
+        verbose: Optional[bool] = None,
     ) -> dict:
         """Function to readily read out all dset attributes."""
+        verbose = verbose or self.verbose
+
         if ids is None:
             ids = range(self.num_files)
             shape = (len(ids), -1)
@@ -514,9 +520,11 @@ class Gadget(object):
         self,
         var: str,
         units: Optional[bool] = None,
-        verbose: Optional[bool] = False,
+        verbose: Optional[bool] = None,
     ) -> np.ndarray:
         """Read in var for all files."""
+        verbose = verbose or self.verbose
+
         if units is None:
             units = self.units
 
@@ -587,10 +595,12 @@ class Gadget(object):
         i: int,
         var: str,
         units: Optional[bool] = None,
-        verbose: Optional[bool] = False,
+        verbose: Optional[bool] = None,
         reshape: Optional[bool] = True,
     ) -> np.ndarray:
         """Read in a single file i"""
+        verbose = verbose or self.verbose
+
         if units is None:
             units = self.units
 
@@ -602,7 +612,7 @@ class Gadget(object):
             data = f[var][()]
 
         # add units
-        if units and not 'int' in str(data.dtype):
+        if units and not "int" in str(data.dtype):
             units = self.get_units(var, i, verbose=verbose)
             data = data * units
             if verbose:
@@ -611,9 +621,14 @@ class Gadget(object):
         return data
 
     def read_all_files(
-        self, var: str, units: Optional[bool] = None, verbose: bool = True
+        self,
+        var: str,
+        units: Optional[bool] = None,
+        verbose: Optional[bool] = None,
     ) -> Union[None, np.ndarray]:
         """Reading routine that does not use hash table."""
+        verbose = verbose or self.verbose
+
         if units is None:
             units = self.units
 
@@ -642,14 +657,14 @@ class Gadget(object):
                     empty.append(j)
                 else:
                     size = f[var].shape[0]
-                    data[start:start + size] = f[var][()]
+                    data[start : start + size] = f[var][()]
                     start = start + size
 
         if empty:
             print("No particles found in filenums = {empty}!")
 
         # add units
-        if units and not 'int' in str(data.dtype):
+        if units and not "int" in str(data.dtype):
             units = self.get_units(var, j, verbose=verbose)
             data = data * units
             if verbose:
