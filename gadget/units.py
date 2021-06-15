@@ -15,6 +15,7 @@ UNITS = {
     'Mass': M_UNIT,
     'Velocity': V_UNIT,
     'ParticleIDs': DIMENSIONLESS,
+    'Particle_Binding_Energy': V_UNIT**2,
     'Density': RHO_UNIT,
     'InternalEnergy': V_UNIT**2,
     'OnEquationOfState': DIMENSIONLESS,
