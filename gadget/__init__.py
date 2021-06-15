@@ -636,7 +636,6 @@ class Gadget(object):
 
         start = 0
         empty = []
-        print(f"{data.shape=}")
         for j in iter_num_files:
             with h5py.File(f"{filename}.{j}.hdf5", "r") as f:
                 if f[var].size == 0:
