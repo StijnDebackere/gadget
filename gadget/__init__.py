@@ -106,11 +106,35 @@ class Gadget(object):
         self.units = units
         self.comoving = comoving
 
+    def check_possible_filenames(self, filedir_options, filename_options, ext_options):
+        file_dir = None
+        for dr in filedir_options:
+            if dr.exists():
+                file_dir = dr
+                break
+
+        if file_dir is None:
+            raise ValueError(f"Could not find valid directory in {filedir_options}")
+
+        filename = None
+        for fn in filename_options:
+            for e in ext_options:
+                if (file_dir / fn).with_suffix(e).exists():
+                    filename = file_dir / fn
+                    ext = e
+                    break
+
+        if filename is None:
+            raise ValueError(f"Could not find valid snapshot file in {snap_dir}")
+
+        return filename, ext
+
     def get_full_dir(self, model_dir: Path, file_type: str, snapnum: int) -> Path:
         """Get filename, including full path and load extra info about number
         of particles in file.
         """
         ext_options = [".0.hdf5", ".hdf5"]
+
         # find data directory
         data_dir_options = [model_dir / "data", model_dir / "Data"]
         data_dir = None
@@ -128,29 +152,14 @@ class Gadget(object):
                 data_dir / f"snapshot_{snapnum:03}",
                 data_dir / f"Snapshots/snapshot_{snapnum:03}",
             ]
-            snap_dir = None
-            for dr in snap_dir_options:
-                if dr.exists():
-                    snap_dir = dr
-                    break
-
-            if snap_dir is None:
-                raise ValueError(
-                    f"Could not find valid snapshot directory in {data_dir}"
-                )
-
             snap_fname_options = [
                 f"snap_{snapnum:03d}",
             ]
-            filename = None
-            for fn in snap_fname_options:
-                for ext in ext_options:
-                    if (snap_dir / fn).with_suffix(ext).exists():
-                        filename = snap_dir / fn
-                        break
-
-            if filename is None:
-                raise ValueError(f"Could not find valid snapshot file in {snap_dir}")
+            filename, ext = self.check_possible_filenames(
+                filedir_options=snap_dir_options,
+                filename_options=snap_fname_options,
+                ext_options=ext_options
+            )
 
         # find FOF file
         if file_type == "fof":
@@ -158,28 +167,15 @@ class Gadget(object):
                 data_dir / f"groups_{snapnum:03}",
                 data_dir / f"EagleSubGroups_5r200/groups_{snapnum:03}",
             ]
-            fof_dir = None
-            for dr in fof_dir_options:
-                if dr.exists():
-                    fof_dir = dr
-                    break
-
-            if fof_dir is None:
-                raise ValueError(f"Could not find valid fof directory in {data_dir}")
-
             fof_fname_options = [
                 f"group{snapnum:03d}",
                 f"group_tab_{snapnum:03d}",
             ]
-            filename = None
-            for fn in fof_fname_options:
-                for ext in ext_options:
-                    if (fof_dir / fn).with_suffix(ext).exists():
-                        filename = fof_dir / fn
-                        break
-
-            if filename is None:
-                raise ValueError(f"Could not find valid FOF file in {fof_dir}")
+            filename, ext = self.check_possible_filenames(
+                filedir_options=fof_dir_options,
+                filename_options=fof_fname_options,
+                ext_options=ext_options
+            )
 
         # find subhalo file
         if file_type == "subh":
@@ -188,31 +184,15 @@ class Gadget(object):
                 data_dir / f"groups_{snapnum:03}",
                 data_dir / f"EagleSubGroups_5r200/groups_{snapnum:03}",
             ]
-            fname_base = f"subh_{snapnum:03d}."
-            subh_dir = None
-            for dr in subh_dir_options:
-                if dr.exists():
-                    subh_dir = dr
-                    break
-
-            if subh_dir is None:
-                raise ValueError(
-                    f"Could not find valid subhalo directory in {data_dir}"
-                )
-
             subh_fname_options = [
                 f"subhalo_{snapnum:03d}",
                 f"eagle_subfind_tab_{snapnum:03d}",
             ]
-            filename = None
-            for fn in subh_fname_options:
-                for ext in ext_options:
-                    if (subh_dir / fn).with_suffix(ext).exists():
-                        filename = subh_dir / fn
-                        break
-
-            if filename is None:
-                raise ValueError(f"Could not find valid subhalo file in {subh_dir}")
+            filename, ext = self.check_possible_filenames(
+                filedir_options=subh_dir_options,
+                filename_options=subh_fname_options,
+                ext_options=ext_options
+            )
 
         # find particles file
         if file_type == "particles":
@@ -220,92 +200,30 @@ class Gadget(object):
                 data_dir / f"particledata_{snapnum:03}",
                 data_dir / f"EagleSubGroups_5r200/particledata_{snapnum:03}",
             ]
-            fname_base = f"part_{snapnum:03d}."
-            part_dir = None
-            for dr in part_dir_options:
-                if dr.exists():
-                    part_dir = dr
-                    break
-
-            if part_dir is None:
-                raise ValueError(
-                    f"Could not find valid particledata directory in {data_dir}"
-                )
-
             part_fname_options = [
                 f"eagle_subfind_particles_{snapnum:03d}",
             ]
-            filename = None
-            for fn in part_fname_options:
-                for ext in ext_options:
-                    if (part_dir / fn).with_suffix(ext).exists():
-                        filename = part_dir / fn
-                        break
+            filename, ext = self.check_possible_filenames(
+                filedir_options=part_dir_options,
+                filename_options=part_fname_options,
+                ext_options=ext_options
+            )
 
-            if filename is None:
-                raise ValueError(f"Could not find valid particles file in {part_dir}")
-
-        # if sim_type == 'OWLS':
-        #     if file_type == 'snap':
-        #         dirname = 'snapshot_%.3i/' % snapnum
-        #         fname = 'snap_%.3i.' % snapnum
-
-        #     elif file_type == 'fof':
-        #         dirname = 'groups_%.3i/' % snapnum
-        #         fname = 'group%.3i.' % snapnum
-
-        #     elif file_type == 'subh':
-        #         dirname = 'subhalos_%.3i/' % snapnum
-        #         fname = 'subhalo_%.3i.' % snapnum
-
-        # elif sim_type == 'BAHAMAS':
-        #     dirpath = model_dir.rstrip('/') + '/data/'
-        #     if file_type == 'snap':
-        #         dirname = 'snapshot_%.3i/' % snapnum
-        #         fname = 'snap_%.3i.' % snapnum
-
-        #     elif file_type == 'particles':
-        #         dirname = 'particledata_%.3i/' % snapnum
-        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
-
-        #     elif file_type == 'fof':
-        #         dirname = 'groups_%.3i/' % snapnum
-        #         fname = 'group_tab_%.3i.' % snapnum
-
-        #     elif file_type == 'subh':
-        #         dirname = 'groups_%.3i/' % snapnum
-        #         fname = 'eagle_subfind_tab_%.3i.' % snapnum
-
-        # elif sim_type == 'BAHAMAS_NEW':
-        #     dirpath = model_dir.rstrip('/') + '/Data/'
-        #     if file_type == 'snap':
-        #         dirname = 'Snapshots/snapshot_%.3i/' % snapnum
-        #         fname = 'snap_%.3i.' % snapnum
-
-        #     elif file_type == 'particles':
-        #         dirname = 'EagleSubGroups_5r200/particledata_%.3i/' % snapnum
-        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
-
-        #     else:
-        #         dirname = 'EagleSubGroups_5r200/groups_%.3i/' % snapnum
-        #         if file_type == 'group':
-        #             fname = 'group_tab_%.3i.'%snapnum
-        #         elif file_type == 'subh':
-        #             fname = 'eagle_subfind_tab_%.3i.'%snapnum
-
-        # load actual file
         try:
             f = h5py.File(filename.with_suffix(ext), "r")
         except:
             breakpoint()
-            raise IOError(f"file {filename} does not exist/cannot be opened")
+            raise IOError(f"file {filename.with_suffix(ext)} does not exist/cannot be opened")
 
         self.num_files = f["Header"].attrs["NumFilesPerSnapshot"]
         self.num_part_tot = f["Header"].attrs["NumPart_Total"]
         self.num_part_file = f["Header"].attrs["NumPart_ThisFile"]
 
         if file_type == "fof":
-            self.num_files = f["FOF"].attrs["NTask"]
+            try:
+                self.num_files = f["Header"].attrs["NTask"]
+            except KeyError:
+                self.num_files = f["FOF"].attrs["NTask"]
             try:
                 self.num_groups_tot = f["FOF"].attrs["Total_Number_of_groups"]
                 self.num_groups_file = f["FOF"].attrs["Number_of_groups"]
@@ -314,7 +232,10 @@ class Gadget(object):
                 self.num_groups_file = f["FOF"].attrs["Ngroups"]
 
         elif file_type == "subh":
-            self.num_files = f["FOF"].attrs["NTask"]
+            try:
+                self.num_files = f["Header"].attrs["NTask"]
+            except KeyError:
+                self.num_files = f["FOF"].attrs["NTask"]
             try:
                 self.num_groups_tot = f["SUBFIND"].attrs["Total_Number_of_groups"]
                 self.num_groups_file = f["SUBFIND"].attrs["Number_of_groups"]
