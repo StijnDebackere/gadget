@@ -50,6 +50,8 @@ UNITS = {
     'ContaminationCount': DIMENSIONLESS,
     'ContaminationMass': M_UNIT,
     'FirstSubhaloID': DIMENSIONLESS,
+    'CenterOfMass': R_UNIT,
+    'CenterOfMassVelocity': V_UNIT,
     'GroupCentreOfPotential': R_UNIT,
     'GroupLength': DIMENSIONLESS,
     'GroupMass': M_UNIT,
