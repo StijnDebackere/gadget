@@ -164,8 +164,8 @@ class Gadget(object):
         # find FOF file
         if file_type == "fof":
             fof_dir_options = [
-                data_dir / f"groups_{snapnum:03}",
                 data_dir / f"EagleSubGroups_5r200/groups_{snapnum:03}",
+                data_dir / f"groups_{snapnum:03}",
             ]
             fof_fname_options = [
                 f"group{snapnum:03d}",
@@ -180,13 +180,16 @@ class Gadget(object):
         # find subhalo file
         if file_type == "subh":
             subh_dir_options = [
-                data_dir / f"subhalos_{snapnum:03}",
-                data_dir / f"groups_{snapnum:03}",
                 data_dir / f"EagleSubGroups_5r200/groups_{snapnum:03}",
+                # # these old file properties do not match our current setup...
+                # data_dir / f"subhalos_{snapnum:03}",
+                data_dir / f"groups_{snapnum:03}",
             ]
             subh_fname_options = [
-                f"subhalo_{snapnum:03d}",
+                # give preference to eagle data
                 f"eagle_subfind_tab_{snapnum:03d}",
+                # # these old file properties do not match our current setup...
+                # f"subhalo_{snapnum:03d}",
             ]
             filename, ext = self.check_possible_filenames(
                 filedir_options=subh_dir_options,
@@ -197,8 +200,8 @@ class Gadget(object):
         # find particles file
         if file_type == "particles":
             part_dir_options = [
-                data_dir / f"particledata_{snapnum:03}",
                 data_dir / f"EagleSubGroups_5r200/particledata_{snapnum:03}",
+                data_dir / f"particledata_{snapnum:03}",
             ]
             part_fname_options = [
                 f"eagle_subfind_particles_{snapnum:03d}",
@@ -221,9 +224,9 @@ class Gadget(object):
 
         if file_type == "fof":
             try:
-                self.num_files = f["Header"].attrs["NTask"]
-            except KeyError:
                 self.num_files = f["FOF"].attrs["NTask"]
+            except KeyError:
+                self.num_files = f["Header"].attrs["NTask"]
             try:
                 self.num_groups_tot = f["FOF"].attrs["Total_Number_of_groups"]
                 self.num_groups_file = f["FOF"].attrs["Number_of_groups"]
@@ -233,21 +236,22 @@ class Gadget(object):
 
         elif file_type == "subh":
             try:
-                self.num_files = f["Header"].attrs["NTask"]
-            except KeyError:
                 self.num_files = f["FOF"].attrs["NTask"]
+            except KeyError:
+                self.num_files = f["Header"].attrs["NTask"]
             try:
+                self.num_groups_tot = f["FOF"].attrs["TotNgroups"]
+                self.num_groups_file = f["FOF"].attrs["Ngroups"]
+                self.num_sub_groups_tot = f["Subhalo"].attrs["TotNgroups"]
+                self.num_sub_groups_file = f["Subhalo"].attrs["Ngroups"]
+            except KeyError:
+                # old-fashioned subfind files, might not work with current setup!
                 self.num_groups_tot = f["SUBFIND"].attrs["Total_Number_of_groups"]
                 self.num_groups_file = f["SUBFIND"].attrs["Number_of_groups"]
                 self.num_sub_groups_tot = f["SUBFIND"].attrs[
                     "Total_Number_of_subgroups"
                 ]
                 self.num_sub_groups_file = f["SUBFIND"].attrs["Number_of_subgroups"]
-            except KeyError:
-                self.num_groups_tot = f["FOF"].attrs["TotNgroups"]
-                self.num_groups_file = f["FOF"].attrs["Ngroups"]
-                self.num_sub_groups_tot = f["Subhalo"].attrs["TotNgroups"]
-                self.num_sub_groups_file = f["Subhalo"].attrs["Ngroups"]
 
         self.read_file_attributes(f)
 
