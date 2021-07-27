@@ -404,9 +404,9 @@ class Gadget(object):
             with h5py.File(self.filename.with_suffix(f".{i}.hdf5"), "r") as h5f:
                 attrs = np.append(attrs, h5f[group].attrs[attr])
 
-        return attrs.reshape(shape)
+        return np.squeeze(attrs.reshape(shape))
 
-    def read_attrs(
+    def read_dset_attrs(
         self,
         dset: str,
         ids: Union[List[int], int] = 0,
@@ -437,7 +437,7 @@ class Gadget(object):
                     else:
                         attrs[attr].append(val)
 
-        attrs = {k: np.asarray(v).reshape(shape) for k, v in attrs.items()}
+        attrs = {k: np.squeeze(np.asarray(v).reshape(shape)) for k, v in attrs.items()}
 
         return attrs
 
