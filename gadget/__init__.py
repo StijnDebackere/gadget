@@ -361,8 +361,10 @@ class Gadget(object):
 
         try:
             self.rho_unit_cgs = f['Units'].attrs['UnitDensity_in_cgs'] * u.g / u.cm**3
+            self.omega_l = f['Header'].attrs['OmegaLambda']
             self.omega_b = f['Header'].attrs['OmegaBaryon']
             self.omega_m = f['Header'].attrs['Omega0']
+            self.h = f['Header'].attrs['HubbleParam']
         except: # if no baryons in file
             self.rho_unit = 0
             self.omega_b = 0
@@ -376,6 +378,12 @@ class Gadget(object):
             self.solarabundance_iron   = f[chem].attrs['SolarAbundance_Iron']
         except:
             pass
+
+        self.cosmo = {
+            "omega_m": self.omega_m,
+            "omega_b": self.omega_b,
+            "h": self.h,
+        }
 
     def list_items(self, var: str="/", j: int=0) -> None:
         """List var items and attributes."""
