@@ -276,54 +276,6 @@ class Gadget(object):
             if filename is None:
                 raise ValueError(f'Could not find valid particles file in {part_dir}')
 
-        # if sim_type == 'OWLS':
-        #     if file_type == 'snap':
-        #         dirname = 'snapshot_%.3i/' % snapnum
-        #         fname = 'snap_%.3i.' % snapnum
-
-        #     elif file_type == 'fof':
-        #         dirname = 'groups_%.3i/' % snapnum
-        #         fname = 'group%.3i.' % snapnum
-
-        #     elif file_type == 'subh':
-        #         dirname = 'subhalos_%.3i/' % snapnum
-        #         fname = 'subhalo_%.3i.' % snapnum
-
-        # elif sim_type == 'BAHAMAS':
-        #     dirpath = model_dir.rstrip('/') + '/data/'
-        #     if file_type == 'snap':
-        #         dirname = 'snapshot_%.3i/' % snapnum
-        #         fname = 'snap_%.3i.' % snapnum
-
-        #     elif file_type == 'particles':
-        #         dirname = 'particledata_%.3i/' % snapnum
-        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
-
-        #     elif file_type == 'fof':
-        #         dirname = 'groups_%.3i/' % snapnum
-        #         fname = 'group_tab_%.3i.' % snapnum
-
-        #     elif file_type == 'subh':
-        #         dirname = 'groups_%.3i/' % snapnum
-        #         fname = 'eagle_subfind_tab_%.3i.' % snapnum
-
-        # elif sim_type == 'BAHAMAS_NEW':
-        #     dirpath = model_dir.rstrip('/') + '/Data/'
-        #     if file_type == 'snap':
-        #         dirname = 'Snapshots/snapshot_%.3i/' % snapnum
-        #         fname = 'snap_%.3i.' % snapnum
-
-        #     elif file_type == 'particles':
-        #         dirname = 'EagleSubGroups_5r200/particledata_%.3i/' % snapnum
-        #         fname = 'eagle_subfind_particles_%.3i.' % snapnum
-
-        #     else:
-        #         dirname = 'EagleSubGroups_5r200/groups_%.3i/' % snapnum
-        #         if file_type == 'group':
-        #             fname = 'group_tab_%.3i.'%snapnum
-        #         elif file_type == 'subh':
-        #             fname = 'eagle_subfind_tab_%.3i.'%snapnum
-
         # load actual file
         try:
             f = h5py.File(filename.with_suffix(ext), 'r')
